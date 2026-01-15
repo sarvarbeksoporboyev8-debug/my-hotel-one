@@ -6,8 +6,12 @@ name: .NET
 on:
   push:
     branches: [ "master" ]
+    paths-ignore:
+      - 'mobile_app/**'
   pull_request:
     branches: [ "master" ]
+    paths-ignore:
+      - 'mobile_app/**'
 
 jobs:
   build:
@@ -15,14 +19,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: 8.0.x
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore SmartHotel.sln
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build SmartHotel.sln --no-restore
     - name: Test
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet test SmartHotel.sln --no-build --verbosity normal

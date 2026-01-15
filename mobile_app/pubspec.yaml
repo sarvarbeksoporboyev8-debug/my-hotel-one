@@ -39,7 +39,7 @@ dependencies:
   email_validator: ^2.1.17
 
   # Google Fonts
-  google_fonts: ^6.1.0
+  google_fonts: ^5.1.0
 
 dev_dependencies:
   flutter_test:

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/theme.dart';
-import '../../../core/widgets/hotel_card.dart';
+import '../../../core/widgets/widgets.dart';
 import '../providers/hotel_provider.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -15,13 +17,10 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
+  static const String _recentSearchesKey = 'recent_searches';
+  static const int _maxRecentSearches = 10;
 
-  final List<String> _recentSearches = [
-    'New York',
-    'Miami Beach',
-    'Luxury Hotels',
-    'San Francisco',
-  ];
+  List<String> _recentSearches = [];
 
   final List<String> _popularDestinations = [
     'Paris',
@@ -35,8 +34,47 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
+    _loadRecentSearches();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
+    });
+  }
+
+  Future<void> _loadRecentSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _recentSearches = prefs.getStringList(_recentSearchesKey) ?? [];
+    });
+  }
+
+  Future<void> _addRecentSearch(String query) async {
+    if (query.trim().isEmpty) return;
+    
+    final prefs = await SharedPreferences.getInstance();
+    // Remove if already exists to avoid duplicates
+    _recentSearches.remove(query);
+    // Add to beginning
+    _recentSearches.insert(0, query);
+    // Keep only max items
+    if (_recentSearches.length > _maxRecentSearches) {
+      _recentSearches = _recentSearches.sublist(0, _maxRecentSearches);
+    }
+    await prefs.setStringList(_recentSearchesKey, _recentSearches);
+    setState(() {});
+  }
+
+  Future<void> _removeRecentSearch(String query) async {
+    final prefs = await SharedPreferences.getInstance();
+    _recentSearches.remove(query);
+    await prefs.setStringList(_recentSearchesKey, _recentSearches);
+    setState(() {});
+  }
+
+  Future<void> _clearRecentSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_recentSearchesKey);
+    setState(() {
+      _recentSearches = [];
     });
   }
 
@@ -121,9 +159,16 @@ class _SearchScreenState extends State<SearchScreen> {
             : null,
       ),
       style: AppTypography.bodyLarge,
+      textInputAction: TextInputAction.search,
       onChanged: (value) {
         context.read<HotelProvider>().searchHotels(value);
         setState(() {});
+      },
+      onSubmitted: (value) {
+        if (value.trim().isNotEmpty) {
+          HapticFeedback.selectionClick();
+          _addRecentSearch(value.trim());
+        }
       },
     );
   }
@@ -143,7 +188,10 @@ class _SearchScreenState extends State<SearchScreen> {
                   style: AppTypography.titleMedium,
                 ),
                 TextButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    HapticFeedback.selectionClick();
+                    _clearRecentSearches();
+                  },
                   child: Text(
                     'Clear',
                     style: AppTypography.labelMedium.copyWith(
@@ -160,9 +208,14 @@ class _SearchScreenState extends State<SearchScreen> {
               children: _recentSearches.map((search) {
                 return GestureDetector(
                   onTap: () {
+                    HapticFeedback.selectionClick();
                     _searchController.text = search;
                     context.read<HotelProvider>().searchHotels(search);
                     setState(() {});
+                  },
+                  onLongPress: () {
+                    HapticFeedback.mediumImpact();
+                    _showRemoveDialog(search);
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -213,7 +266,9 @@ class _SearchScreenState extends State<SearchScreen> {
               final destination = _popularDestinations[index];
               return GestureDetector(
                 onTap: () {
+                  HapticFeedback.selectionClick();
                   _searchController.text = destination;
+                  _addRecentSearch(destination);
                   context.read<HotelProvider>().searchHotels(destination);
                   setState(() {});
                 },
@@ -257,26 +312,38 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildNoResults() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Iconsax.search_status,
-            size: 64,
-            color: AppColors.textTertiary,
+    return EmptyState.noSearchResults(
+      onClear: () {
+        _searchController.clear();
+        context.read<HotelProvider>().searchHotels('');
+        setState(() {});
+      },
+    );
+  }
+
+  void _showRemoveDialog(String search) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove from history?'),
+        content: Text('Remove "$search" from your recent searches?'),
+        shape: RoundedRectangleBorder(
+          borderRadius: AppSpacing.borderRadiusLg,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
-          AppSpacing.vGapLg,
-          Text(
-            'No results found',
-            style: AppTypography.headlineSmall.copyWith(
-              color: AppColors.textSecondary,
+          TextButton(
+            onPressed: () {
+              _removeRecentSearch(search);
+              Navigator.pop(context);
+            },
+            child: Text(
+              'Remove',
+              style: TextStyle(color: AppColors.error),
             ),
-          ),
-          AppSpacing.vGapSm,
-          Text(
-            'Try searching for something else',
-            style: AppTypography.bodyMedium,
           ),
         ],
       ),

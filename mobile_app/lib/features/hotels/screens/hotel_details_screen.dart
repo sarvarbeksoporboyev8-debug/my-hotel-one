@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:provider/provider.dart';
@@ -92,7 +93,10 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
         Padding(
           padding: const EdgeInsets.all(8),
           child: GestureDetector(
-            onTap: () => provider.toggleFavorite(hotel.id),
+            onTap: () {
+              HapticFeedback.lightImpact();
+              provider.toggleFavorite(hotel.id);
+            },
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
@@ -136,10 +140,18 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
               },
               itemCount: hotel.images.length,
               itemBuilder: (context, index) {
-                return CachedNetworkImage(
+                final image = CachedNetworkImage(
                   imageUrl: hotel.images[index],
                   fit: BoxFit.cover,
                 );
+                // Only wrap first image in Hero for smooth transition from card
+                if (index == 0) {
+                  return Hero(
+                    tag: 'hotel-image-${hotel.id}',
+                    child: image,
+                  );
+                }
+                return image;
               },
             ),
             Positioned(
@@ -413,6 +425,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
               child: CustomButton(
                 text: 'Book Now',
                 onPressed: () {
+                  HapticFeedback.mediumImpact();
                   Navigator.pushNamed(context, '/booking');
                 },
                 icon: Iconsax.calendar_tick,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:shimmer/shimmer.dart';
@@ -224,27 +225,30 @@ class HotelCard extends StatelessWidget {
   Widget _buildImage({required double height}) {
     return Stack(
       children: [
-        ClipRRect(
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(AppSpacing.radiusXl),
-          ),
-          child: CachedNetworkImage(
-            imageUrl: hotel.images.first,
-            height: height,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            placeholder: (context, url) => Shimmer.fromColors(
-              baseColor: AppColors.surfaceVariant,
-              highlightColor: AppColors.surface,
-              child: Container(
+        Hero(
+          tag: 'hotel-image-${hotel.id}',
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppSpacing.radiusXl),
+            ),
+            child: CachedNetworkImage(
+              imageUrl: hotel.images.first,
+              height: height,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Shimmer.fromColors(
+                baseColor: AppColors.surfaceVariant,
+                highlightColor: AppColors.surface,
+                child: Container(
+                  height: height,
+                  color: AppColors.surfaceVariant,
+                ),
+              ),
+              errorWidget: (context, url, error) => Container(
                 height: height,
                 color: AppColors.surfaceVariant,
+                child: const Icon(Iconsax.image, size: 40),
               ),
-            ),
-            errorWidget: (context, url, error) => Container(
-              height: height,
-              color: AppColors.surfaceVariant,
-              child: const Icon(Iconsax.image, size: 40),
             ),
           ),
         ),
@@ -252,7 +256,10 @@ class HotelCard extends StatelessWidget {
           top: AppSpacing.md,
           right: AppSpacing.md,
           child: GestureDetector(
-            onTap: onFavorite,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              onFavorite();
+            },
             child: Container(
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(

@@ -253,6 +253,10 @@ class MockDataService {
 
   User? get currentUser => _currentUser;
 
+  void updateUser(User user) {
+    _currentUser = user;
+  }
+
   void logout() {
     _currentUser = null;
   }

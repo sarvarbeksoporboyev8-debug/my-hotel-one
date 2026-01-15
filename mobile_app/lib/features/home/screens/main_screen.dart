@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/theme/theme.dart';
 import 'home_screen.dart';
@@ -7,14 +8,16 @@ import '../../hotels/screens/hotels_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final int initialTab;
+  
+  const MainScreen({super.key, this.initialTab = 0});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0;
+  late int _currentIndex;
 
   final List<Widget> _screens = [
     const HomeScreen(),
@@ -24,7 +27,15 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialTab.clamp(0, _screens.length - 1);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
@@ -32,7 +43,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: isDark ? AppColors.surfaceDark : AppColors.surface,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -67,9 +78,12 @@ class _MainScreenState extends State<MainScreen> {
 
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _currentIndex = index;
-        });
+        if (_currentIndex != index) {
+          HapticFeedback.selectionClick();
+          setState(() {
+            _currentIndex = index;
+          });
+        }
       },
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(

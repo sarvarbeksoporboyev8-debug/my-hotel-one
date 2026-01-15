@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../hotels/providers/hotel_provider.dart';
+import '../../booking/providers/booking_provider.dart';
+import '../providers/settings_provider.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -11,9 +14,10 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Consumer2<AuthProvider, HotelProvider>(
-        builder: (context, authProvider, hotelProvider, child) {
+      body: Consumer4<AuthProvider, HotelProvider, BookingProvider, SettingsProvider>(
+        builder: (context, authProvider, hotelProvider, bookingProvider, settingsProvider, child) {
           final user = authProvider.user;
+          final isGuest = user == null;
 
           return CustomScrollView(
             slivers: [
@@ -67,7 +71,7 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           AppSpacing.vGapXs,
                           Text(
-                            user?.email ?? '',
+                            user?.email ?? 'Sign in to access all features',
                             style: AppTypography.bodyMedium.copyWith(
                               color: Colors.white.withOpacity(0.8),
                             ),
@@ -78,17 +82,21 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 actions: [
-                  IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
+                  if (!isGuest)
+                    IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Iconsax.edit, color: Colors.white, size: 20),
                       ),
-                      child: const Icon(Iconsax.edit, color: Colors.white, size: 20),
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        Navigator.pushNamed(context, '/personal-info');
+                      },
                     ),
-                    onPressed: () {},
-                  ),
                 ],
               ),
               SliverToBoxAdapter(
@@ -98,42 +106,68 @@ class ProfileScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       AppSpacing.vGapXxl,
-                      _buildStatsRow(hotelProvider),
-                      AppSpacing.vGapXxl,
-                      Text(
-                        'Account',
-                        style: AppTypography.titleMedium.copyWith(
-                          color: AppColors.textTertiary,
+                      if (isGuest) ...[
+                        _buildGuestBanner(context),
+                        AppSpacing.vGapXxl,
+                      ] else ...[
+                        _buildStatsRow(hotelProvider, bookingProvider),
+                        AppSpacing.vGapXxl,
+                        Text(
+                          'Account',
+                          style: AppTypography.titleMedium.copyWith(
+                            color: AppColors.textTertiary,
+                          ),
                         ),
-                      ),
-                      AppSpacing.vGapMd,
-                      _buildMenuItem(
-                        icon: Iconsax.user,
-                        title: 'Personal Information',
-                        onTap: () {},
-                      ),
-                      _buildMenuItem(
-                        icon: Iconsax.card,
-                        title: 'Payment Methods',
-                        onTap: () {},
-                      ),
-                      _buildMenuItem(
-                        icon: Iconsax.notification,
-                        title: 'Notifications',
-                        trailing: _buildSwitch(true),
-                        onTap: () {},
-                      ),
-                      _buildMenuItem(
-                        icon: Iconsax.heart,
-                        title: 'Saved Hotels',
-                        onTap: () async {
-                          await hotelProvider.loadFavorites();
-                          if (context.mounted) {
-                            Navigator.pushNamed(context, '/favorites');
-                          }
-                        },
-                      ),
-                      AppSpacing.vGapXxl,
+                        AppSpacing.vGapMd,
+                        _buildMenuItem(
+                          context: context,
+                          icon: Iconsax.user,
+                          title: 'Personal Information',
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.pushNamed(context, '/personal-info');
+                          },
+                        ),
+                        _buildMenuItem(
+                          context: context,
+                          icon: Iconsax.card,
+                          title: 'Payment Methods',
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.pushNamed(context, '/payment-methods');
+                          },
+                        ),
+                        _buildMenuItem(
+                          context: context,
+                          icon: Iconsax.notification,
+                          title: 'Notifications',
+                          trailing: _buildSwitch(
+                            settingsProvider.notificationsEnabled,
+                            (value) {
+                              HapticFeedback.selectionClick();
+                              settingsProvider.setNotificationsEnabled(value);
+                            },
+                          ),
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.pushNamed(context, '/notifications');
+                          },
+                        ),
+                        _buildMenuItem(
+                          context: context,
+                          icon: Iconsax.heart,
+                          title: 'Saved Hotels',
+                          subtitle: '${hotelProvider.favorites.length} saved',
+                          onTap: () async {
+                            HapticFeedback.selectionClick();
+                            await hotelProvider.loadFavorites();
+                            if (context.mounted) {
+                              Navigator.pushNamed(context, '/favorites');
+                            }
+                          },
+                        ),
+                        AppSpacing.vGapXxl,
+                      ],
                       Text(
                         'Preferences',
                         style: AppTypography.titleMedium.copyWith(
@@ -142,22 +176,40 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       AppSpacing.vGapMd,
                       _buildMenuItem(
+                        context: context,
                         icon: Iconsax.language_square,
                         title: 'Language',
-                        subtitle: 'English',
-                        onTap: () {},
+                        subtitle: settingsProvider.language,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          Navigator.pushNamed(context, '/language');
+                        },
                       ),
                       _buildMenuItem(
+                        context: context,
                         icon: Iconsax.dollar_circle,
                         title: 'Currency',
-                        subtitle: 'USD (\$)',
-                        onTap: () {},
+                        subtitle: '${settingsProvider.currency} (${settingsProvider.currencySymbol})',
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          Navigator.pushNamed(context, '/currency');
+                        },
                       ),
                       _buildMenuItem(
+                        context: context,
                         icon: Iconsax.moon,
                         title: 'Dark Mode',
-                        trailing: _buildSwitch(false),
-                        onTap: () {},
+                        trailing: _buildSwitch(
+                          settingsProvider.isDarkMode,
+                          (value) {
+                            HapticFeedback.selectionClick();
+                            settingsProvider.setDarkMode(value);
+                          },
+                        ),
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          settingsProvider.setDarkMode(!settingsProvider.isDarkMode);
+                        },
                       ),
                       AppSpacing.vGapXxl,
                       Text(
@@ -168,28 +220,47 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       AppSpacing.vGapMd,
                       _buildMenuItem(
+                        context: context,
                         icon: Iconsax.message_question,
                         title: 'Help Center',
-                        onTap: () {},
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          _showComingSoon(context, 'Help Center');
+                        },
                       ),
                       _buildMenuItem(
+                        context: context,
                         icon: Iconsax.shield_tick,
                         title: 'Privacy Policy',
-                        onTap: () {},
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          _showComingSoon(context, 'Privacy Policy');
+                        },
                       ),
                       _buildMenuItem(
+                        context: context,
                         icon: Iconsax.document_text,
                         title: 'Terms of Service',
-                        onTap: () {},
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          _showComingSoon(context, 'Terms of Service');
+                        },
                       ),
                       _buildMenuItem(
+                        context: context,
                         icon: Iconsax.info_circle,
                         title: 'About',
                         subtitle: 'Version 1.0.0',
-                        onTap: () {},
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          Navigator.pushNamed(context, '/about');
+                        },
                       ),
                       AppSpacing.vGapXxl,
-                      _buildLogoutButton(context, authProvider),
+                      if (isGuest)
+                        _buildSignInButton(context)
+                      else
+                        _buildLogoutButton(context, authProvider),
                       AppSpacing.vGapXxxl,
                     ],
                   ),
@@ -202,7 +273,55 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsRow(HotelProvider hotelProvider) {
+  Widget _buildGuestBanner(BuildContext context) {
+    return Container(
+      padding: AppSpacing.cardPadding,
+      decoration: BoxDecoration(
+        gradient: AppColors.primaryGradient,
+        borderRadius: AppSpacing.borderRadiusXl,
+        boxShadow: AppColors.buttonShadow,
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Iconsax.user_add, color: Colors.white, size: 24),
+          ),
+          AppSpacing.hGapMd,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sign in for more',
+                  style: AppTypography.titleMedium.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
+                AppSpacing.vGapXs,
+                Text(
+                  'Save favorites, manage bookings, and more',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Iconsax.arrow_right_3,
+            color: Colors.white.withOpacity(0.8),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsRow(HotelProvider hotelProvider, BookingProvider bookingProvider) {
     return Container(
       padding: AppSpacing.cardPadding,
       decoration: BoxDecoration(
@@ -213,7 +332,7 @@ class ProfileScreen extends StatelessWidget {
         children: [
           Expanded(
             child: _buildStatItem(
-              '12',
+              '${bookingProvider.bookings.length}',
               'Bookings',
               Iconsax.receipt_2,
             ),
@@ -237,7 +356,7 @@ class ProfileScreen extends StatelessWidget {
           ),
           Expanded(
             child: _buildStatItem(
-              '8',
+              '0',
               'Reviews',
               Iconsax.star,
             ),
@@ -265,12 +384,15 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildMenuItem({
+    required BuildContext context,
     required IconData icon,
     required String title,
     String? subtitle,
     Widget? trailing,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return InkWell(
       onTap: onTap,
       borderRadius: AppSpacing.borderRadiusMd,
@@ -281,7 +403,9 @@ class ProfileScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                color: AppColors.surfaceVariant,
+                color: isDark 
+                    ? AppColors.primary.withOpacity(0.2)
+                    : AppColors.surfaceVariant,
                 borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               ),
               child: Icon(icon, color: AppColors.primary, size: 22),
@@ -317,17 +441,62 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSwitch(bool value) {
+  Widget _buildSwitch(bool value, ValueChanged<bool> onChanged) {
     return Switch(
       value: value,
-      onChanged: (v) {},
+      onChanged: onChanged,
       activeColor: AppColors.primary,
+    );
+  }
+
+  void _showComingSoon(BuildContext context, String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature coming soon'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Widget _buildSignInButton(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        Navigator.pushNamed(context, '/login');
+      },
+      borderRadius: AppSpacing.borderRadiusMd,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          gradient: AppColors.primaryGradient,
+          borderRadius: AppSpacing.borderRadiusMd,
+          boxShadow: AppColors.buttonShadow,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Iconsax.login, color: Colors.white),
+            AppSpacing.hGapMd,
+            Text(
+              'Sign In',
+              style: AppTypography.titleMedium.copyWith(
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildLogoutButton(BuildContext context, AuthProvider authProvider) {
     return InkWell(
       onTap: () {
+        HapticFeedback.selectionClick();
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
@@ -349,6 +518,7 @@ class ProfileScreen extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () {
+                  HapticFeedback.mediumImpact();
                   authProvider.logout();
                   Navigator.pushNamedAndRemoveUntil(
                     context,

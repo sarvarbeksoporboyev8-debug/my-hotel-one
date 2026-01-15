@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -42,6 +43,9 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen>
     );
 
     _controller.forward();
+    
+    // Haptic feedback on success
+    HapticFeedback.mediumImpact();
   }
 
   @override
@@ -203,11 +207,14 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen>
                         CustomButton(
                           text: 'View My Bookings',
                           onPressed: () {
+                            HapticFeedback.lightImpact();
                             provider.clearBookingData();
+                            // Navigate to MainScreen with Bookings tab (index 2)
                             Navigator.pushNamedAndRemoveUntil(
                               context,
                               '/main',
                               (route) => false,
+                              arguments: 2,
                             );
                           },
                           icon: Iconsax.receipt_2,
@@ -217,11 +224,14 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen>
                           text: 'Back to Home',
                           variant: ButtonVariant.outline,
                           onPressed: () {
+                            HapticFeedback.lightImpact();
                             provider.clearBookingData();
+                            // Navigate to MainScreen with Home tab (index 0)
                             Navigator.pushNamedAndRemoveUntil(
                               context,
                               '/main',
                               (route) => false,
+                              arguments: 0,
                             );
                           },
                           icon: Iconsax.home,

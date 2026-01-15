@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/theme.dart';
-import '../../../core/widgets/hotel_card.dart';
+import '../../../core/widgets/widgets.dart';
 import '../../hotels/providers/hotel_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 
@@ -102,7 +103,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       child: GestureDetector(
-        onTap: () => Navigator.pushNamed(context, '/search'),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          Navigator.pushNamed(context, '/search');
+        },
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
@@ -168,7 +172,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   final category = provider.categories[index];
                   final isSelected = category == provider.selectedCategory;
                   return GestureDetector(
-                    onTap: () => provider.setCategory(category),
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      provider.setCategory(category);
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.only(right: AppSpacing.sm),
@@ -202,9 +209,20 @@ class _HomeScreenState extends State<HomeScreen> {
     return Consumer<HotelProvider>(
       builder: (context, provider, child) {
         if (provider.isLoading && provider.popularHotels.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(AppSpacing.xxl),
-            child: Center(child: CircularProgressIndicator()),
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSpacing.vGapXxl,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                child: Text(
+                  'Popular Hotels',
+                  style: AppTypography.headlineSmall,
+                ),
+              ),
+              AppSpacing.vGapMd,
+              const HotelListSkeleton(itemCount: 3, isCompact: true),
+            ],
           );
         }
 
